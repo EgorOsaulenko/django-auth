@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Нікнейм: {{ request.user.username }}</h1>
+<h2>Ім'я: {{ request.user.first_name }}</h2>
+<h2>Прізвище: {{ request.user.last_name }}</h2>
+<h2>Номер телефону: {{ request.user.phone_number }}</h2>
+<h2>Адреса: {{ request.user.address }}</h2>
+{% endblock content %}
