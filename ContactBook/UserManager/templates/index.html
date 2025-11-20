@@ -1,6 +1,24 @@
 {% extends "base.html" %}
+{% block title %}Мій кабінет{% endblock %}
 {% block content %}
-<h1>Username: {{ request.user.username }}</h1>
-<h2>First_name: {{ request.user.first_name }}</h2>
-<h2>Last_name: {{ request.user.last_name }}</h2>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h2 class="mb-4">Мій кабінет</h2>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Інформація про користувача</h5>
+                <p class="card-text"><strong>Логін:</strong> {{ request.user.username }}</p>
+                <p class="card-text"><strong>Ім'я:</strong> {{ request.user.first_name }}</p>
+                <p class="card-text"><strong>Прізвище:</strong> {{ request.user.last_name }}</p>
+                {% if request.user.phone_number %}
+                    <p class="card-text"><strong>Телефон:</strong> {{ request.user.phone_number }}</p>
+                {% endif %}
+                {% if request.user.address %}
+                    <p class="card-text"><strong>Адреса:</strong> {{ request.user.address }}</p>
+                {% endif %}
+                <a href="{% url 'store_home' %}" class="btn btn-primary mt-3">Перейти до магазину</a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

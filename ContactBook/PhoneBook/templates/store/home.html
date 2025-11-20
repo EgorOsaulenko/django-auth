@@ -1,0 +1,102 @@
+{% extends "store/base.html" %}
+{% load static %}
+
+{% block title %}Головна - Магазин{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="text-center">Ласкаво просимо до нашого магазину!</h1>
+        {% if visit_count %}
+            <p class="text-center text-muted">Це ваше {{ visit_count }}-те відвідування</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Головні товари -->
+<div class="featured-section">
+    <h2 class="section-title">⭐ Головні товари</h2>
+    <div class="row">
+        {% for product in featured_products %}
+            <div class="col-md-4 col-sm-6 mb-4">
+                <div class="card product-card position-relative">
+                    {% if product.is_new %}
+                        <span class="new-badge">НОВИЙ</span>
+                    {% endif %}
+                    {% if product.image %}
+                        <img src="{{ product.image.url }}" class="card-img-top product-image" alt="{{ product.name }}">
+                    {% else %}
+                        <img src="{% static 'images/pngtree-sonic-the-hedgehog-vector-png-image_6896295.png' %}" class="card-img-top product-image" alt="No image">
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text">{{ product.description|truncatewords:15 }}</p>
+                        <div class="mb-2">
+                            <span class="rating">★</span> {{ product.rating }}/5
+                        </div>
+                        <p class="card-text"><strong>{{ product.price }} грн</strong></p>
+                        <p class="text-muted small">На складі: {{ product.count }} шт.</p>
+                        {% if request.user.is_authenticated %}
+                            {% if product.count > 0 %}
+                                <a href="{% url 'add_to_basket' product.id %}" class="btn btn-primary">Додати до кошика</a>
+                            {% else %}
+                                <button class="btn btn-secondary" disabled>Немає в наявності</button>
+                            {% endif %}
+                        {% else %}
+                            <a href="{% url 'sign_in' %}" class="btn btn-outline-primary">Увійти для покупки</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <p class="text-muted">Головні товари відсутні. Додайте їх через адмін панель.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Товари у топі -->
+<div class="top-section">
+    <h2 class="section-title">🔥 Товари у топі</h2>
+    <div class="row">
+        {% for product in top_products %}
+            <div class="col-md-4 col-sm-6 mb-4">
+                <div class="card product-card position-relative">
+                    {% if product.is_new %}
+                        <span class="new-badge">НОВИЙ</span>
+                    {% endif %}
+                    {% if product.image %}
+                        <img src="{{ product.image.url }}" class="card-img-top product-image" alt="{{ product.name }}">
+                    {% else %}
+                        <img src="{% static 'images/pngtree-sonic-the-hedgehog-vector-png-image_6896295.png' %}" class="card-img-top product-image" alt="No image">
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text">{{ product.description|truncatewords:15 }}</p>
+                        <div class="mb-2">
+                            <span class="rating">★</span> {{ product.rating }}/5
+                        </div>
+                        <p class="card-text"><strong>{{ product.price }} грн</strong></p>
+                        <p class="text-muted small">На складі: {{ product.count }} шт.</p>
+                        {% if request.user.is_authenticated %}
+                            {% if product.count > 0 %}
+                                <a href="{% url 'add_to_basket' product.id %}" class="btn btn-primary">Додати до кошика</a>
+                            {% else %}
+                                <button class="btn btn-secondary" disabled>Немає в наявності</button>
+                            {% endif %}
+                        {% else %}
+                            <a href="{% url 'sign_in' %}" class="btn btn-outline-primary">Увійти для покупки</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <p class="text-muted">Товари у топі відсутні. Додайте їх через адмін панель.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+

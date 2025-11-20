@@ -1,0 +1,63 @@
+{% extends "store/base.html" %}
+{% load static %}
+
+{% block title %}Кошик{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Мій кошик</h2>
+
+{% if basket_items %}
+    <div class="row">
+        {% for basket_data in basket_items %}
+            {% with item=basket_data.item %}
+            <div class="col-md-6 mb-4">
+                <div class="card product-card">
+                    <div class="row g-0">
+                        <div class="col-md-4">
+                            {% if item.product.image %}
+                                <img src="{{ item.product.image.url }}" class="img-fluid rounded-start product-image" alt="{{ item.product.name }}">
+                            {% else %}
+                                <img src="{% static 'images/pngtree-sonic-the-hedgehog-vector-png-image_6896295.png' %}" class="img-fluid rounded-start product-image" alt="No image">
+                            {% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ item.product.name }}</h5>
+                                <p class="card-text">{{ item.product.description|truncatewords:10 }}</p>
+                                <p class="card-text"><strong>Ціна: {{ item.product.price }} грн</strong></p>
+                                <p class="card-text">
+                                    <span class="badge bg-primary">Кількість: {{ item.quantity }}</span>
+                                </p>
+                                <p class="card-text">
+                                    <strong>Сума: {{ basket_data.item_total|floatformat:2 }} грн</strong>
+                                </p>
+                                <a href="{% url 'remove_from_basket' item.id %}" class="btn btn-danger btn-sm">Видалити</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+        {% endfor %}
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Загальна сума: <strong>{{ total_price|floatformat:2 }} грн</strong></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <h4>Ваш кошик порожній</h4>
+        <p>Додайте товари з головної сторінки!</p>
+        <a href="{% url 'store_home' %}" class="btn btn-primary">Перейти до магазину</a>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% endblock %}
+

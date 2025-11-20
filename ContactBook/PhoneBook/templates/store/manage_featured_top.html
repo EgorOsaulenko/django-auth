@@ -1,0 +1,65 @@
+{% extends "store/base.html" %}
+
+{% block title %}Управління головними та топ товарами{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Управління головними та топ товарами</h2>
+<p class="text-muted">Додавайте та видаляйте товари через адмін панель Django (/admin/)</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>⭐ Головні товари</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Назва товару</th>
+                    <th>Порядок</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in featured_products %}
+                    <tr>
+                        <td>{{ item.product.id }}</td>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.order }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center">Головні товари відсутні</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="col-md-6">
+        <h3>🔥 Товари у топі</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Назва товару</th>
+                    <th>Порядок</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in top_products %}
+                    <tr>
+                        <td>{{ item.product.id }}</td>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.order }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center">Товари у топі відсутні</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<a href="{% url 'store_home' %}" class="btn btn-secondary mt-3">Повернутися на головну</a>
+{% endblock %}
+
