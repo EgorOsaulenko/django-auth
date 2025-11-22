@@ -21,6 +21,18 @@ class  SignUpForm(UserCreationForm):
     class Meta:
         model = MySuperUser
         fields = ("username", "first_name", "last_name", "phone_number", "adress", "password1", "password2",)
+    
+    def clean_username(self):
+        """Перевірка унікальності username"""
+        username = self.cleaned_data.get('username')
+        if username:
+            # Перевірка чи існує користувач з таким username
+            if MySuperUser.objects.filter(username=username).exists():
+                raise forms.ValidationError(
+                    "Користувач з таким іменем вже існує. Будь ласка, оберіть інше ім'я.",
+                    code='duplicate_username'
+                )
+        return username
         
     
 class LoginForm(AuthenticationForm):

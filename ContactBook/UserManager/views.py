@@ -3,6 +3,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpRequest
+from django.db import IntegrityError
 
 from .forms import SignUpForm, LoginForm
 
@@ -12,11 +13,22 @@ def sign_up(request):
         return redirect("store_home")
     
     form = SignUpForm(data=request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        user = form.save()
-        login(request=request, user=user)
-        messages.add_message(request=request, level=messages.SUCCESS, message="Ви зарєєструвались.")
-        return redirect("store_home")
+    if request.method == "POST":
+        if form.is_valid():
+            try:
+                user = form.save()
+                login(request=request, user=user)
+                messages.add_message(request=request, level=messages.SUCCESS, message="Ви зарєєструвались.")
+                return redirect("store_home")
+            except IntegrityError as e:
+                # Обробка помилки унікальності (наприклад, якщо username вже існує)
+                if 'username' in str(e):
+                    form.add_error('username', 'Користувач з таким іменем вже існує. Будь ласка, оберіть інше ім\'я.')
+                    messages.add_message(request=request, level=messages.ERROR, 
+                                       message="Користувач з таким іменем вже існує. Будь ласка, оберіть інше ім'я.")
+                else:
+                    messages.add_message(request=request, level=messages.ERROR, 
+                                       message="Помилка при реєстрації. Спробуйте ще раз.")
     
     return render(request=request, template_name="sign_up.html", context={"form": form})
 

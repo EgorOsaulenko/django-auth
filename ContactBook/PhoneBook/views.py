@@ -3,8 +3,9 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.cache import cache_page
+from django.views.decorators.cache import cache_page, never_cache
 from django.db.models import Q
+from django.conf import settings
 
 from .models import Contact, Product, Basket, FeaturedProduct, TopProduct
 from .forms import ContactForm, ProductForm
@@ -20,6 +21,7 @@ def add_contact(request):
             contact = form.save(commit=False)
             contact.user = request.user
             contact.save()
+            cache.delete(f'user_contacts_{request.user.id}')
             messages.add_message(request=request, level=messages.SUCCESS, message="Контакт додан")
             return redirect("get_contacts")
     
@@ -27,15 +29,25 @@ def add_contact(request):
 
 @login_required(login_url="/sign_in")
 def get_contacts(request):
-    contacts = Contact.objects.filter(user=request.user).all()
+    """Отримання контактів користувача з кешуванням"""
+    cache_key = f'user_contacts_{request.user.id}'
+    contacts = cache.get(cache_key)
+    
+    if contacts is None:
+        contacts = list(Contact.objects.filter(user=request.user).all())
+        cache.set(cache_key, contacts, getattr(settings, 'CACHE_TIMEOUT_MEDIUM', 300))
+    
     return render(request=request, template_name="contacts.html", context=dict(contacts=contacts))
 
 
 @login_required
 def delete_contact(request, id):
     contact = Contact.objects.filter(pk=id, user=request.user).first()
+    contact_name = str(contact)
     contact.delete()
-    messages.add_message(request=request, message=f"Контакт '{contact}' видалено", level=messages.SUCCESS)
+    # Очищення кешу контактів користувача
+    cache.delete(f'user_contacts_{request.user.id}')
+    messages.add_message(request=request, message=f"Контакт '{contact_name}' видалено", level=messages.SUCCESS)
     return redirect("get_contacts")
 
 
@@ -45,6 +57,8 @@ def edit_contact(request, id):
     form = ContactForm(data=request.POST or None, files=request.FILES or None, instance=contact)
     if request.POST and form.changed_data:
         form.save()
+        # Очищення кешу контактів користувача
+        cache.delete(f'user_contacts_{request.user.id}')
         messages.add_message(request=request, message="Дані оновлені", level=messages.SUCCESS)
         return redirect("get_contacts")
     
@@ -96,7 +110,7 @@ def store_home(request):
             'featured_products': featured_products,
             'top_products': top_products,
         }
-        cache.set(cache_key, products_data, 60 * 15)  # Кешування на 15 хвилин
+        cache.set(cache_key, products_data, getattr(settings, 'CACHE_TIMEOUT_LONG', 900))  # Кешування на 15 хвилин
     else:
         featured_products = products_data['featured_products']
         top_products = products_data['top_products']
@@ -126,6 +140,7 @@ def add_product(request):
             form.save()
             # Очищення кешу
             cache.delete('store_home_products')
+            cache.delete('all_products_admin')
             messages.success(request, "Товар успішно додано!")
             return redirect("store_home")
     else:
@@ -137,7 +152,13 @@ def add_product(request):
 @user_passes_test(is_admin, login_url='/users/sign_in/')
 def manage_products(request):
     """Управління товарами (тільки для адмінів)"""
-    products = Product.objects.all().order_by('-created_at')
+    cache_key = 'all_products_admin'
+    products = cache.get(cache_key)
+    
+    if products is None:
+        products = list(Product.objects.all().order_by('-created_at'))
+        cache.set(cache_key, products, getattr(settings, 'CACHE_TIMEOUT_SHORT', 60))  # Коротке кешування для адмін-панелі
+    
     return render(request, 'store/manage_products.html', {'products': products})
 
 
@@ -156,6 +177,7 @@ def delete_product(request, product_id):
     
     # Очищення кешу
     cache.delete('store_home_products')
+    cache.delete('all_products_admin')
     
     messages.success(request, f"Товар '{product_name}' успішно видалено!")
     return redirect("manage_products")
@@ -164,8 +186,20 @@ def delete_product(request, product_id):
 @user_passes_test(is_admin, login_url='/users/sign_in/')
 def manage_featured_top(request):
     """Управління головними та топ товарами (тільки для адмінів)"""
-    featured_products = FeaturedProduct.objects.select_related('product').all()
-    top_products = TopProduct.objects.select_related('product').all()
+    cache_key = 'featured_top_products_admin'
+    products_data = cache.get(cache_key)
+    
+    if products_data is None:
+        featured_products = list(FeaturedProduct.objects.select_related('product').all())
+        top_products = list(TopProduct.objects.select_related('product').all())
+        products_data = {
+            'featured_products': featured_products,
+            'top_products': top_products,
+        }
+        cache.set(cache_key, products_data, getattr(settings, 'CACHE_TIMEOUT_SHORT', 60))
+    else:
+        featured_products = products_data['featured_products']
+        top_products = products_data['top_products']
     
     return render(request, 'store/manage_featured_top.html', {
         'featured_products': featured_products,
@@ -207,23 +241,39 @@ def add_to_basket(request, product_id):
     request.session['basket_items'].append(product_id)
     request.session.modified = True
     
+    # Очищення кешу кошика
+    cache.delete(f'basket_{request.user.id}')
+    
     return redirect("store_home")
 
 
 @login_required
 def basket_view(request):
-    """Перегляд кошика користувача"""
-    basket_items = Basket.objects.filter(user=request.user).select_related('product')
-    # Обчислюємо суму для кожного товару та загальну суму
-    items_with_total = []
-    total_price = 0
-    for item in basket_items:
-        item_total = float(item.product.price) * item.quantity
-        items_with_total.append({
-            'item': item,
-            'item_total': item_total,
-        })
-        total_price += item_total
+    """Перегляд кошика користувача з кешуванням"""
+    cache_key = f'basket_{request.user.id}'
+    basket_data = cache.get(cache_key)
+    
+    if basket_data is None:
+        basket_items = Basket.objects.filter(user=request.user).select_related('product')
+        # Обчислюємо суму для кожного товару та загальну суму
+        items_with_total = []
+        total_price = 0
+        for item in basket_items:
+            item_total = float(item.product.price) * item.quantity
+            items_with_total.append({
+                'item': item,
+                'item_total': item_total,
+            })
+            total_price += item_total
+        
+        basket_data = {
+            'basket_items': items_with_total,
+            'total_price': total_price,
+        }
+        cache.set(cache_key, basket_data, getattr(settings, 'CACHE_TIMEOUT_SHORT', 60))  # Коротке кешування для кошика
+    else:
+        items_with_total = basket_data['basket_items']
+        total_price = basket_data['total_price']
     
     return render(request, 'store/basket.html', {
         'basket_items': items_with_total,
@@ -236,5 +286,7 @@ def remove_from_basket(request, basket_id):
     """Видалення товару з кошика"""
     basket_item = get_object_or_404(Basket, id=basket_id, user=request.user)
     basket_item.delete()
+    # Очищення кешу кошика
+    cache.delete(f'basket_{request.user.id}')
     messages.success(request, "Товар видалено з кошика!")
     return redirect("basket_view")

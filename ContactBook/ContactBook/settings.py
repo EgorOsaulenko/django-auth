@@ -43,8 +43,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.cache.UpdateCacheMiddleware',  # Кешування на рівні middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware',  # Отримання з кешу
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -119,7 +121,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / "static",
-]
+] if (BASE_DIR / "static").exists() else []
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / "media"
@@ -131,12 +133,42 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'UserManager.MySuperUser'
 
+# Cache configuration
+# https://docs.djangoproject.com/en/5.2/topics/cache/
+
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'contactbook-store-cache',
-    }
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+            'CULL_FREQUENCY': 3,
+        },
+        'TIMEOUT': 300,  # 5 хвилин за замовчуванням
+        'KEY_PREFIX': 'contactbook',
+        'VERSION': 1,
+    },
+    # Альтернативний файловий кеш для production
+    'file_cache': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': BASE_DIR / 'cache',
+        'OPTIONS': {
+            'MAX_ENTRIES': 10000,
+        },
+        'TIMEOUT': 300,
+        'KEY_PREFIX': 'contactbook',
+    },
 }
+
+# Cache timeout settings (в секундах)
+CACHE_TIMEOUT_SHORT = 60  # 1 хвилина
+CACHE_TIMEOUT_MEDIUM = 300  # 5 хвилин
+CACHE_TIMEOUT_LONG = 900  # 15 хвилин
 
 LOGIN_URL = 'sign_in'
 LOGIN_REDIRECT_URL = 'store_home'
+
+# Cache settings для middleware
+CACHE_MIDDLEWARE_ALIAS = 'default'
+CACHE_MIDDLEWARE_SECONDS = 300  # 5 хвилин для сторінок
+CACHE_MIDDLEWARE_KEY_PREFIX = 'contactbook'
